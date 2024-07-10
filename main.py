@@ -180,7 +180,9 @@ def export_file(df_multiple_files):
 
     # Round off amount to integer
     df_multiple_files['amount'] = df_multiple_files['amount'].round().astype(int)
-   
+    df_multiple_files['YM'] = [date.strftime('%Y/%m') for date in df_multiple_files['invoice_date']]
+    df_multiple_files = df_multiple_files[['YM', 'invoice_number', 'invoice_date', 'seller_name', 'amount', 'description']]
+
     output_folder_path = 'output_folder'
     if not os.path.exists(output_folder_path):
         os.makedirs(output_folder_path)
