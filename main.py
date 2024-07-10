@@ -47,11 +47,6 @@ class InvoiceFile(object):
                 else:
                     raise Exception('Unknown row type: ' + kind)
         return invoice_file
-
-    def __repr__(self):
-        text = '發票彙整 {0}（共 {1} 張發票）\n'.format(self.file_name, len(self.invoices))
-        text += '\n'.join([ indent(invoice.__repr__()) for invoice in self.invoices ])
-        return text
     
     # Export the result to a dataframe
     @classmethod
@@ -117,14 +112,6 @@ class Invoice(object):
                                 self.invoice_number,
                                 detail.invoice_number))
         self.details.append(detail)
-
-    def __repr__(self):
-        text = '發票 {0}\n'.format(self.invoice_number)
-        for name, description in self.FIELDS.items():
-            text += '    {description}：{value}\n'.format(description=description, value=getattr(self, name))
-        text += '    明細（共 {0} 項明細）\n'.format(len(self.details))
-        text += '\n'.join([ indent(indent(detail.__repr__()))  for detail in self.details ])
-        return text
     
 
 class Detail(object):
@@ -146,15 +133,11 @@ class Detail(object):
         row = row[1:]
         # Unpack fields
         fields = dict(zip(cls.FIELDS, row))
-        fields['amount'] = int(fields['amount'])
+        fields['amount'] = float(fields['amount'])
         # OK, create the object
         detail = cls(**fields)
         return detail
 
-    def __repr__(self):
-        text = '{description}：{value}\n'.format(description="名稱", value = self.description)
-        text += '＄：{value}'.format(value = self.amount)
-        return text
 
 def invoice_tidying(df):
     df = df[df['invoice_status'] == '開立']
