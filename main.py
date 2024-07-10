@@ -1,12 +1,12 @@
 # %%
 from __future__ import print_function
 import csv
-import datetime
-import collections
-import pandas as pd
-import glob
 import warnings
+import collections
+import datetime
+import pandas as pd
 import os
+import glob
 
 
 warnings.filterwarnings("ignore")
@@ -34,19 +34,25 @@ class InvoiceFile(object):
     @classmethod
     def from_file(cls, file_name):
         invoice_file = cls(file_name)
-        with open(file_name, 'r', encoding='utf-8-sig') as csv_file:
-            for index, raw_row in enumerate(csv.reader(csv_file, delimiter='|')):
-                if index <= 1:  # Skip the second row
-                    continue
-                row = [field for field in raw_row]
-                kind = row[0]
-                if kind == 'M':
-                    invoice_file._add_invoice_from_row(row)
-                elif kind == 'D':
-                    invoice_file._add_detail_to_last_invoice_from_row(row)
-                else:
-                    raise Exception('Unknown row type: ' + kind)
-        return invoice_file
+        try:
+            with open(file_name, 'r', encoding='utf-8-sig') as csv_file:
+                for index, raw_row in enumerate(csv.reader(csv_file, delimiter='|')):
+                    if index == 0:
+                        if raw_row != ['表頭=M', '載具名稱', '載具號碼', '發票日期', '商店統編', '商店店名', '發票號碼', '總金額', '發票狀態', '']:
+                            raise Exception('Invalid header: ' + file_name + '\n' + indent(str(raw_row)))
+                    if index <= 1:  # Skip the second row
+                        continue
+                    row = [field for field in raw_row]
+                    kind = row[0]
+                    if kind == 'M':
+                        invoice_file._add_invoice_from_row(row)
+                    elif kind == 'D':
+                        invoice_file._add_detail_to_last_invoice_from_row(row)
+                    else:
+                        raise Exception('Unknown row type: ' + kind)
+            return invoice_file
+        except Exception as e:
+            raise Exception('Invalid file: ' + file_name)
     
     # Export the result to a dataframe
     @classmethod
@@ -61,7 +67,7 @@ class InvoiceFile(object):
                     'invoice_date': invoice.invoice_date,
                     'seller_id': invoice.seller_id,
                     'seller_name': invoice.seller_name,
-                    'amount': invoice.amount,
+                    'amount': int(invoice.amount),
                     'invoice_status': invoice.invoice_status,
                     'description': detail.description,
                     'amount': detail.amount,
@@ -167,23 +173,36 @@ def invoice_tidying(df):
     df.reset_index(drop=True, inplace=True)
     return df
 
+def export_file(df_multiple_files):
+    # Find the start time and end time of the invoices
+    start_YM = df_multiple_files['invoice_date'].min().strftime('%Y%m')
+    end_YM = df_multiple_files['invoice_date'].max().strftime('%Y%m')
+
+    # Round off amount to integer
+    df_multiple_files['amount'] = df_multiple_files['amount'].round().astype(int)
+   
+    output_folder_path = 'output_folder'
+    if not os.path.exists(output_folder_path):
+        os.makedirs(output_folder_path)
+    output_file_name = f'Invoice_tidied_{start_YM}_{end_YM}.xlsx'
+    df_multiple_files.to_excel(f"{output_folder_path}/{output_file_name}", index=False)
+
+
 if __name__ == "__main__":
     input_folder_path = 'input_folder'
     file_extension = '*.csv'
     file_names = glob.glob(f"{input_folder_path}/{file_extension}")
+    df_multiple_files = pd.DataFrame()
 
     for file_name in file_names:
         invoice = InvoiceFile.from_file(file_name)
 
-        # Export the result to a dataframe
-        df = InvoiceFile.to_dataframe(invoice)
-        df = invoice_tidying(df)
+        # Merge the results into a dataframe
+        df_single_file = InvoiceFile.to_dataframe(invoice)
+        df_single_file = invoice_tidying(df_single_file)
+        df_multiple_files = pd.concat([df_multiple_files, df_single_file])
 
-        output_folder_path = 'output_folder'
-        if not os.path.exists(output_folder_path):
-            os.makedirs(output_folder_path)
-        output_file_name = file_name.replace('.csv', '').replace('input_folder\\','') + '_tidied.xlsx'
-        df.to_excel(f"{output_folder_path}/{output_file_name}")
+    export_file(df_multiple_files)
 
 
 # %%
