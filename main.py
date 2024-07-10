@@ -7,7 +7,7 @@ import datetime
 import pandas as pd
 import os
 import glob
-
+import requests
 
 warnings.filterwarnings("ignore")
 
@@ -178,9 +178,11 @@ def export_file(df_multiple_files):
     start_YM = df_multiple_files['invoice_date'].min().strftime('%Y%m')
     end_YM = df_multiple_files['invoice_date'].max().strftime('%Y%m')
 
-    # Round off amount to integer
     df_multiple_files['amount'] = df_multiple_files['amount'].round().astype(int)
-   
+    df_multiple_files['YM'] = df_multiple_files['invoice_date'].dt.strftime('%Y%m')
+    df_multiple_files.rename(columns={'invoice_date': 'Date', 'amount': 'Amount', 'description': 'Description', 'seller_name': 'Shop', 'invoice_number': 'Invoice Number'}, inplace=True)
+    df_multiple_files = df_multiple_files[['YM', 'Date', 'Shop', 'Invoice Number','Amount', 'Description']]
+
     output_folder_path = 'output_folder'
     if not os.path.exists(output_folder_path):
         os.makedirs(output_folder_path)
@@ -188,6 +190,9 @@ def export_file(df_multiple_files):
     df_multiple_files.to_excel(f"{output_folder_path}/{output_file_name}", index=False)
 
 
+
+
+# %%
 if __name__ == "__main__":
     input_folder_path = 'input_folder'
     file_extension = '*.csv'
@@ -206,3 +211,252 @@ if __name__ == "__main__":
 
 
 # %%
+import requests
+
+def post_to_notion_database(get_all = True):
+    notion_secret = "secret_YcOpxzmfN82Ogt8zzuFiJ5BKAM4D9C5ltiNfNNWYvNO"
+    database_id = "67ee4c5e5b794d8892ae10d506046163"
+    headers = {
+        "Authorization": "Bearer " + notion_secret,
+        "Content-Type": "application/json",
+        "Notion-Version": "2022-06-28",  
+        # Check what is the latest version here: https://developers.notion.com/reference/changes-by-version
+    }
+    url = f"https://api.notion.com/v1/databases/{database_id}/query"
+    page_size = 100
+    payload = {"page_size": page_size}
+    response = requests.post(url, json=payload, headers=headers)
+    data = response.json()
+    print(response.status_code)
+    print(response.text)
+    results = data["results"]
+    while data["has_more"] and get_all:
+        payload = {"page_size": page_size, "start_cursor": data["next_cursor"]}
+        url = f"https://api.notion.com/v1/databases/{database_id}/query"
+        response = requests.post(url, json=payload, headers=headers)
+        data = response.json()
+        results.extend(data["results"])
+    return results
+
+pages = post_to_notion_database()
+import json
+
+# Assuming 'pages' is a list of dictionaries you're iterating over
+pages_data = []
+for page in pages:
+    page_data = {
+        "id": page["id"],
+        "properties": page["properties"]
+    }
+    pages_data.append(page_data)
+
+# Exporting to a JSON file
+with open('pages_data.json', 'w', encoding="utf-8") as json_file:
+    json.dump(pages_data, json_file, indent=4)
+# %%
+import re
+
+title = "Bulbasaur"
+text_content = "Bulbasaur is a small, quadrupedal amphibian Pokémon that has blue-green skin with darker patches."
+type_text = "Grass"
+notion_secret = "secret_YcOpxzmfN82Ogt8zzuFiJ5BKAM4D9C5ltiNfNNWYvNO"
+database_id = "67ee4c5e5b794d8892ae10d506046163"
+
+
+headers = {
+    "Authorization": "Bearer " + notion_secret,
+    "Content-Type": "application/json",
+    "Notion-Version": "2022-06-28",  # Check the latest version here: https://developers.notion.com/reference/changes-by-version
+}
+
+
+def create_page(data: dict):
+    create_url = "https://api.notion.com/v1/pages"
+    payload = {"parent": {"database_id": database_id}, "properties": data}
+    res = requests.post(create_url, headers=headers, json=payload)
+    if res.status_code == 200:
+        print(f"{res.status_code}: Page created successfully")
+    else:
+        print(f"{res.status_code}: Error during page creation")
+    return res
+
+
+properties = {
+    "Type": {
+        "id": "%3Dqql",
+        "type": "select",
+        "select": {
+            "name": type_text,
+        },
+    },
+    "Name": {
+        "id": "title",
+        "type": "title",
+        "title": [
+            {
+                "type": "text",
+                "text": {"content": title, "link": None},
+                "annotations": {
+                    "bold": False,
+                    "italic": False,
+                    "strikethrough": False,
+                    "underline": False,
+                    "code": False,
+                    "color": "default",
+                },
+                "plain_text": title,
+                "href": None,
+            }
+        ],
+    },
+}
+
+properties_to_add = {
+    "Description": {
+                "id": "%3Dqql",
+                "type": "rich_text",
+                "rich_text": [
+                    {
+                        "type": "text",
+                        "text": {
+                            "content": "\u91d1\u6d41\u624b\u7e8c\u8cbb",
+                            "link": None
+                        },
+                        "annotations": {
+                            "bold": False,
+                            "italic": False,
+                            "strikethrough": False,
+                            "underline": False,
+                            "code": False,
+                            "color": "default"
+                        },
+                        "plain_text": "\u91d1\u6d41\u624b\u7e8c\u8cbb",
+                        "href": None
+                    }
+                ]
+            },
+            "Amount": {
+                "id": "VBJ%3F",
+                "type": "number",
+                "number": 15
+            },
+            "Category": {
+                "id": "XeFw",
+                "type": "multi_select",
+                "multi_select": [
+                    {
+                        "id": "B{^U",
+                        "name": "Utilities",
+                        "color": "pink"
+                    }
+                ]
+            },
+            "Date": {
+                "id": "fqkK",
+                "type": "rich_text",
+                "rich_text": [
+                    {
+                        "type": "text",
+                        "text": {
+                            "content": "6/5/2024",
+                            "link": None
+                        },
+                        "annotations": {
+                            "bold": False,
+                            "italic": False,
+                            "strikethrough": False,
+                            "underline": False,
+                            "code": False,
+                            "color": "default"
+                        },
+                        "plain_text": "6/5/2024",
+                        "href": None
+                    }
+                ]
+            },
+            "Shop": {
+                "id": "joux",
+                "type": "rich_text",
+                "rich_text": [
+                    {
+                        "type": "text",
+                        "text": {
+                            "content": "\u5168\u652f\u4ed8\u96fb\u5b50\u652f\u4ed8\u80a1\u4efd\u6709\u9650\u516c\u53f8",
+                            "link": None
+                        },
+                        "annotations": {
+                            "bold": False,
+                            "italic": False,
+                            "strikethrough": False,
+                            "underline": False,
+                            "code": False,
+                            "color": "default"
+                        },
+                        "plain_text": "\u5168\u652f\u4ed8\u96fb\u5b50\u652f\u4ed8\u80a1\u4efd\u6709\u9650\u516c\u53f8",
+                        "href": None
+                    }
+                ]
+            },
+            "Name": {
+                "id": "title",
+                "type": "title",
+                "title": [
+                    {
+                        "type": "text",
+                        "text": {
+                            "content": "BG98295741",
+                            "link": None
+                        },
+                        "annotations": {
+                            "bold": False,
+                            "italic": False,
+                            "strikethrough": False,
+                            "underline": False,
+                            "code": False,
+                            "color": "default"
+                        },
+                        "plain_text": "BG98295741",
+                        "href": None
+                    }
+                ]
+            }
+        }
+
+
+response = create_page(properties)
+page_block_id = response.json()["id"]
+
+
+def edit_page(page_block_id, data: dict):
+    edit_url = f"https://api.notion.com/v1/blocks/{page_block_id}/children"
+    res = requests.patch(edit_url, headers=headers, json=data)
+    if res.status_code == 200:
+        print(f"{res.status_code}: Page edited successfully")
+    else:
+        print(f"{res.status_code}: Error during page editing")
+    return res
+
+
+chunks = re.findall(r".{1,2000}(?=\s|$)", text_content)
+
+blocks = {
+    "children": [
+        {
+            "object": "block",
+            "type": "paragraph",
+            "paragraph": {
+                "rich_text": [
+                    {
+                        "type": "text",
+                        "text": {
+                            "content": chunk.strip(),
+                        },
+                    }
+                ]
+            },
+        }
+        for chunk in chunks
+    ]
+}
+
+edit_page(page_block_id, blocks)
