@@ -57,3 +57,7 @@ docs/_build/
 
 # Visual Studio Code
 .vscode/
+
+# Private files
+private/
+output_folder/Invoice_tidied_202311_202406.xlsx
