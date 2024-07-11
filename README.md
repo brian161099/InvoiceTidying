@@ -16,7 +16,7 @@
 ## 測試資料集示例
 以下為`test_202406.csv`產出之Excel檔。
 
-YM	|	Invoice Number*	|	Date	|	Shop	|	Amount	|	Category
+YM	|	Invoice Number*	|	Date	|	Shop	|	Amount	|	Description 
 ----	|	----	|	----	|	----	|	----	|	----
 2024/05	|	AJ0228***4	|	8/5/2024	|	全家便利商店股份有限公司台大二活門市部	|	45	|	中熱拿鐵
 2024/05	|	AJ0228***4	|	8/5/2024	|	全家便利商店股份有限公司台大二活門市部	|	34	|	星—大口義式香草烤雞飯糰 *** 鮮食促
