@@ -7,7 +7,7 @@ import datetime
 import pandas as pd
 import os
 import glob
-
+import os
 
 warnings.filterwarnings("ignore")
 
@@ -178,24 +178,27 @@ def export_file(df_multiple_files):
     start_YM = df_multiple_files['invoice_date'].min().strftime('%Y%m')
     end_YM = df_multiple_files['invoice_date'].max().strftime('%Y%m')
 
-    # Round off amount to integer
     df_multiple_files['amount'] = df_multiple_files['amount'].round().astype(int)
-    df_multiple_files['YM'] = [date.strftime('%Y/%m') for date in df_multiple_files['invoice_date']]
-    df_multiple_files = df_multiple_files[['YM', 'invoice_number', 'invoice_date', 'seller_name', 'amount', 'description']]
+    df_multiple_files['YM'] = df_multiple_files['invoice_date'].dt.strftime('%Y/%m')
+    df_multiple_files.rename(columns={'invoice_date': 'Date', 'amount': 'Amount', 'description': 'Description', 'seller_name': 'Shop', 'invoice_number': 'Invoice Number'}, inplace=True)
+    df_multiple_files = df_multiple_files[['YM', 'Date', 'Shop', 'Invoice Number','Amount', 'Description']]
 
     output_folder_path = 'output_folder'
     if not os.path.exists(output_folder_path):
         os.makedirs(output_folder_path)
     output_file_name = f'Invoice_tidied_{start_YM}_{end_YM}.xlsx'
     df_multiple_files.to_excel(f"{output_folder_path}/{output_file_name}", index=False)
+    print(f"Successfully exported the file to {output_folder_path}/{output_file_name}")
 
 
 if __name__ == "__main__":
+    # Read the files in the input folder
     input_folder_path = 'input_folder'
     file_extension = '*.csv'
     file_names = glob.glob(f"{input_folder_path}/{file_extension}")
     df_multiple_files = pd.DataFrame()
 
+    # Loop through the files and extract the data
     for file_name in file_names:
         invoice = InvoiceFile.from_file(file_name)
 
@@ -205,6 +208,3 @@ if __name__ == "__main__":
         df_multiple_files = pd.concat([df_multiple_files, df_single_file])
 
     export_file(df_multiple_files)
-
-
-# %%
