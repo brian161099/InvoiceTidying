@@ -41,6 +41,7 @@ YM	|	Invoice Number*	|	Date	|	Shop	|	Amount	|	Category
    - 消費發票彙整通知每月會發送一次，但雙月寄送的檔案會包含單月的發票（例如：12月彙整通知會包含11月發票資訊），可以僅放入雙月資料及最新的單月資料即可。（例如：2024年2月、2024年4月、2024年6月、2024年7月）
 2. 執行`export_to_excel.py`。
 3. 每個檔案轉換好後會自動合并為一個Excel檔，命名規則為「Invoice_tidied_\{最早發票年月\}_\{最晚發票年月}.xlsx」（例如：`Invoice_tidied_202311_202406.xlsx`），並且會儲存在`output_folder`内。
+4. Terminal會顯示`Successfully exported the file to output_folder\Invoice_tidied_\{最早發票年月\}_\{最晚發票年月}.xlsx`訊息。
 
 ## Notion匯入功能使用方式
 1. 在Notion上新建一個Integration。
@@ -68,8 +69,15 @@ YM	|	Invoice Number*	|	Date	|	Shop	|	Amount	|	Category
 9. 確保已經事先執行`export_to_excel.py`，在`output_folder`已經有`Invoice_tidied.xlsx`檔案。
    - 程式會以最近編輯日期最晚（最接近當下）的檔案爲匯入目標。
 10. 執行`import_to_notion.py`。
+   - 若在Database已有發票資料，則會略過不上傳。
+   - 每上傳一筆資料，Terminal會顯示成功與失敗進度：`Successfully updated the database. Current progress: 1 success, 0 fail`
+   - 若上傳失敗，會顯示該資料及其錯誤：`Failed to update the database for the following row: ...`
+   - 上傳完畢後，最後會顯示成功上傳筆數：`Failed to upload 1 row(s).`
+   - 若有上傳失敗的發票，最後會顯示失敗筆數：`Successfully uploaded 9 rows.`
+   - 若沒有上傳任何資料（可能是Database已有發票資料而略過全部待上傳發票），會顯示：`No rows were uploaded.`
 
 
 ## 錯誤排除
 - 若放入非消費發票彙整通知之檔案，將會出現「Invalid file」錯誤，並顯示此檔案名稱。
 - 若有更動消費發票彙整通知欄位名稱，將會出現「Invalid header」錯誤，並顯示錯誤欄位名稱。
+- 若出現發票資料異常，例如：「Invalid invoice status」、「Invalid row kind for invoice」、「Unknown row type」等，則會在後方顯示錯誤資料。
